@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Web-Runners</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    /* ---------- inlined CSS ---------- */
+    body{
+      margin:0;
+      background:#111;
+      color:#fff;
+      font-family:Arial,Helvetica,sans-serif;
+      text-align:center;
+    }
+    canvas{
+      background:url("res/bg.png") bottom/100% auto;
+      border:2px solid #fff;
+      margin:0 auto;
+      display:block;
+    }
+    #ui{
+      position:absolute;
+      top:10px;
+      left:50%;
+      transform:translateX(-50%);
+    }
+    #restart{
+      padding:10px 20px;
+      font-size:1.2em;
+      margin-top:10px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Web-Runners</h1>
+  <canvas id="game" width="480" height="640"></canvas>
+
+  <div id="ui">
+    <p id="score">Score: 0</p>
+    <button id="restart" hidden>Restart</button>
+  </div>
+
+  <script>
+  /* ---------- inlined JS ---------- */
+  const cvs = document.getElementById('game');
+  const ctx = cvs.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const restartBtn = document.getElementById('restart');
+
+  /* load images */
+  const imgs = {};
+  ['player','train','coin'].forEach(name=>{
+    imgs[name] = new Image();
+    imgs[name].src = `res/${name}.png`;
+  });
+
+  /* constants */
+  const LANES = 3, LANE_W = cvs.width / LANES;
+  const GRAVITY = .4, JUMP_V = -10;
+  let score, speed, player, obstacles, coins, running;
+
+  /* classes */
+  class Runner {
+    constructor(){
+      this.w = 40; this.h = 60;
+      this.x = 1 * LANE_W + (LANE_W-this.w)/2;
+      this.y = cvs.height - this.h - 10;
+      this.vy = 0;
+      this.onGround = true;
+      this.lane = 1;
+    }
+    draw(){ ctx.drawImage(imgs.player, this.x, this.y, this.w, this.h); }
+    jump(){ if(this.onGround){ this.vy = JUMP_V; this.onGround=false;} }
+    move(dir){
+      this.lane = Math.max(0,Math.min(LANES-1,this.lane+dir));
+      this.x = this.lane * LANE_W + (LANE_W-this.w)/2;
+    }
+    update(){
+      this.y += this.vy;
+      this.vy += GRAVITY;
+      if(this.y >= cvs.height-this.h-10){
+        this.y = cvs.height-this.h-10;
+        this.vy=0; this.onGround=true;
+      }
+    }
+  }
+
+  class Obstacle {
+    constructor(lane){
+      this.w = LANE_W*.8; this.h = 50;
+      this.x = lane * LANE_W + (LANE_W-this.w)/2;
+      this.y = -this.h;
+    }
+    update(){ this.y += speed; }
+    draw(){ ctx.drawImage(imgs.train, this.x, this.y, this.w, this.h); }
+  }
+
+  class Coin {
+    constructor(lane){
+      this.r = 15;
+      this.x = lane * LANE_W + LANE_W/2;
+      this.y = -this.r;
+    }
+    update(){ this.y += speed; }
+    draw(){
+      ctx.beginPath();
+      ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+      ctx.fillStyle='gold';
+      ctx.fill();
+    }
+  }
+
+  /* helpers */
+  function reset(){
+    score=0; speed=5;
+    player=new Runner();
+    obstacles=[]; coins=[];
+    running=true;
+    restartBtn.hidden=true;
+    loop();
+  }
+  function spawn(){
+    if(Math.random()<.02) obstacles.push(new Obstacle( (Math.random()*3)|0 ));
+    if(Math.random()<.03) coins.push(new Coin( (Math.random()*3)|0 ));
+  }
+  function collision(a,b){
+    return a.x < b.x+b.w && a.x+a.w > b.x &&
+           a.y < b.y+b.h && a.y+a.h > b.y;
+  }
+  function gameOver(){
+    running=false;
+    restartBtn.hidden=false;
+  }
+
+  /* input */
+  document.addEventListener('keydown',e=>{
+    if(!running) return;
+    if(e.code==='ArrowLeft') player.move(-1);
+    if(e.code==='ArrowRight') player.move(1);
+    if(e.code==='Space') player.jump();
+  });
+  let touchX=null;
+  cvs.addEventListener('touchstart',e=>{touchX=e.touches[0].clientX});
+  cvs.addEventListener('touchend',e=>{
+    const dx = e.changedTouches[0].clientX - touchX;
+    if(Math.abs(dx)>30){
+      player.move(dx>0?1:-1);
+    }else{
+      player.jump();
+    }
+  });
+
+  /* game loop */
+  function loop(){
+    if(!running) return;
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+
+    player.update(); player.draw();
+    obstacles.forEach(o=>{ o.update(); o.draw(); });
+    coins.forEach(c=>{ c.update(); c.draw(); });
+
+    for(let o of obstacles){
+      if(collision(player,o)) return gameOver();
+    }
+    coins = coins.filter(c=>{
+      if(c.y>cvs.height) return false;
+      if(collision({x:c.x-c.r,y:c.y-c.r,w:c.r*2,h:c.r*2}, player)){
+        score+=10;
+        return false;
+      }
+      return true;
+    });
+    obstacles = obstacles.filter(o=>o.y<cvs.height+50);
+
+    scoreEl.textContent='Score: '+score;
+    if(score>0 && score%100===0) speed+=.2;
+
+    spawn();
+    requestAnimationFrame(loop);
+  }
+
+  restartBtn.onclick = reset;
+  reset();
+  </script>
+</body>
+</html>
