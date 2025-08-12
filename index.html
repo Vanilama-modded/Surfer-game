@@ -5,7 +5,6 @@
   <title>Web-Runners</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <style>
-    /* ---------- inlined CSS ---------- */
     body{
       margin:0;
       background:#111;
@@ -14,7 +13,7 @@
       text-align:center;
     }
     canvas{
-      background:url("res/bg.png") bottom/100% auto;
+      background:url("bg.png") bottom/100% auto;
       border:2px solid #fff;
       margin:0 auto;
       display:block;
@@ -43,25 +42,22 @@
   </div>
 
   <script>
-  /* ---------- inlined JS ---------- */
   const cvs = document.getElementById('game');
   const ctx = cvs.getContext('2d');
   const scoreEl = document.getElementById('score');
   const restartBtn = document.getElementById('restart');
 
-  /* load images */
+  /* load images from same folder */
   const imgs = {};
   ['player','train','coin'].forEach(name=>{
     imgs[name] = new Image();
-    imgs[name].src = `res/${name}.png`;
+    imgs[name].src = name + '.png';   // e.g. player.png
   });
 
-  /* constants */
   const LANES = 3, LANE_W = cvs.width / LANES;
   const GRAVITY = .4, JUMP_V = -10;
   let score, speed, player, obstacles, coins, running;
 
-  /* classes */
   class Runner {
     constructor(){
       this.w = 40; this.h = 60;
@@ -112,7 +108,6 @@
     }
   }
 
-  /* helpers */
   function reset(){
     score=0; speed=5;
     player=new Runner();
@@ -134,7 +129,6 @@
     restartBtn.hidden=false;
   }
 
-  /* input */
   document.addEventListener('keydown',e=>{
     if(!running) return;
     if(e.code==='ArrowLeft') player.move(-1);
@@ -152,7 +146,6 @@
     }
   });
 
-  /* game loop */
   function loop(){
     if(!running) return;
     ctx.clearRect(0,0,cvs.width,cvs.height);
